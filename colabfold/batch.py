@@ -23,6 +23,11 @@ import shutil
 import pickle
 
 from argparse import ArgumentParser
+
+# neil IFNDEF (15.06)
+from itertools import islice
+
+# neil ENDIF (15.06)
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from io import StringIO
@@ -217,7 +222,6 @@ modified_mapping = {
     "IAS": "ASP",
     "GPL": "LYS",
     "KYN": "TRP",
-    "CSD": "CYS",
     "SEC": "CYS",
 }
 
@@ -894,10 +898,10 @@ def get_msa_and_templates(
                         logger.info(
                             f"Sequence {index} found templates: {len(template_list)}"
                         )
-                        # (neil) ENDIF 23.05
                         # logger.info(
                         #     f"Sequence {index} found templates: {template_feature['template_domain_names'].astype(str).tolist()}"
                         # )
+                        # (neil) ENDIF 23.05
                 else:
                     template_feature = mk_mock_template(query_seqs_unique[index])
                     logger.info(f"Sequence {index} found no templates")
@@ -965,19 +969,22 @@ def build_monomer_feature(
     sequence: str,
     unpaired_msa: str,
     template_features: Dict[str, Any],
+    max_seq: int,
 ):
     files = file_manager(prefix, result_dir)
 
     msa = pipeline.parsers.parse_a3m(unpaired_msa)
 
-    # neil IFNDEF (14.06)
+    # neil IFNDEF (15.06)
     true_msa = ""
-    for desc, seq in zip(msa.descriptions, msa.sequences):
+    for desc, seq in islice(
+        zip(msa.descriptions, msa.sequences), min(len(msa), max_seq)
+    ):
         true_msa += f">{desc}\n{seq}\n"
 
     files.get("monomer_msa", "a3m").write_text(true_msa)
     logger.info("Saved input monomer MSA")
-    # neil ENDIF (14.06)
+    # neil ENDIF (15.06)
 
     # gather features
     return {
@@ -1109,10 +1116,11 @@ def generate_input_feature(
         )
 
         input_feature = build_monomer_feature(
-            # neil IFNDEF (14.06)
+            # neil IFNDEF (15.06)
             prefix=prefix,
             result_dir=result_dir,
-            # neil ENDIF (14.06)
+            max_seq=max_seq,
+            # neil ENDIF (15.06)
             sequence=full_sequence,
             unpaired_msa=a3m_lines,
             template_features=mk_mock_template(full_sequence),
@@ -1147,6 +1155,7 @@ def generate_input_feature(
                 # neil IFNDEF (14.06)
                 prefix=prefix,
                 result_dir=result_dir,
+                max_seq=max_seq,
                 # neil ENDIF (14.06)
                 sequence=sequence,
                 unpaired_msa=input_msa,
